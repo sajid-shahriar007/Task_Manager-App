@@ -3,49 +3,34 @@ import { useForm } from "react-hook-form"
 import { Link, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../providers/AuthProvider";
 import Swal from "sweetalert2";
-import useAxiosPublic from "../../hooks/useAxiosPublic";
-import SocialLogin from "../../components/SocialLogin/SocialLogin";
 
 
 const SignUp = () => {
-    // copy paste from react hook form
     const { register, handleSubmit, reset, formState: { errors }, } = useForm()
 
-    const axiosPublic = useAxiosPublic()
-    const { createUser, updateUserProfile } = useContext(AuthContext)
+    const { createUser } = useContext(AuthContext)
     const navigate = useNavigate();
 
-    const onSubmit = data => {
-        // console.log(data);
-        createUser(data.email, data.password)
-            .then(result => {
-                const loggedUser = result.user;
-                console.log(loggedUser);
-                updateUserProfile(data.name)
-                    .then(() => {
-                        const userInfo = {
-                            name: data.name,
-                            email: data.email
-                        }
-                        axiosPublic.post('/users', userInfo)
-                            .then(res => {
-                                if (res.data.insertedId) {
-                                    reset();
-                                    Swal.fire({
-                                        position: 'top-end',
-                                        icon: 'success',
-                                        title: 'User created successfully.',
-                                        showConfirmButton: false,
-                                        timer: 1500
-                                    });
-                                    navigate(-1);
-                                }
-                            })
-
-
-                    })
-                    .catch(error => console.log(error))
-            })
+    const onSubmit = async (data) => {
+        try {
+            await createUser(data.name, data.email, data.password);
+            reset();
+            Swal.fire({
+                position: 'top-end',
+                icon: 'success',
+                title: 'User created successfully.',
+                showConfirmButton: false,
+                timer: 1500
+            });
+            navigate('/');
+        } catch (error) {
+            console.error(error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Registration Failed',
+                text: error.response?.data?.error || 'Something went wrong',
+            });
+        }
     };
 
 
@@ -85,27 +70,16 @@ const SignUp = () => {
 
                         <div className="mb-4">
                             <label className="block text-sm font-medium text-gray-600">Password</label>
-                            <input  // Regex validation module 66-6
+                            <input
                                 type="password"
-                                {...register("password", { required: true, minLength: 6, maxLength: 20 })} // length 6 to 20
+                                {...register("password", { required: true, minLength: 6, maxLength: 20 })}
                                 className="w-full mt-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
                                 placeholder="Enter your password"
                             />
-                            {/* error handling for specific type of error */}
                             {errors.password?.type === 'required' && <span className="text-red-600">Password is required.</span>}
                             {errors.password?.type === 'minLength' && <span className="text-red-600">Password must be at least 6 characters</span>}
                             {errors.password?.type === 'maxLength' && <span className="text-red-600">Password must be less than 20 characters</span>}
                         </div>
-
-                        {/* <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-600">Re-enter Password</label>
-            <input
-              type="password"
-              className="w-full mt-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
-              placeholder="Confirm your password"
-              required
-            />
-          </div> */}
 
                         <button
                             type="submit"
@@ -113,14 +87,6 @@ const SignUp = () => {
                         >
                             Sign Up
                         </button>
-
-                        <div className="mt-4 flex items-center justify-center gap-2">
-                            <div className="w-full h-px bg-gray-300"></div>
-                            <span className="text-sm text-gray-500">OR</span>
-                            <div className="w-full h-px bg-gray-300"></div>
-                        </div>
-
-                        <SocialLogin></SocialLogin>
 
                         <p className="mt-4 text-sm text-center text-gray-500">
                             Already have an account? <Link to="/login" className="text-blue-500 hover:underline">Login</Link>

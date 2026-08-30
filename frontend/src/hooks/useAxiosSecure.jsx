@@ -1,22 +1,17 @@
 import axios from 'axios';
-import { getAuth } from 'firebase/auth';
-import { app } from '../firebase/firebase.config';
 
-// Authenticated axios instance: attaches the current user's Firebase ID token
-// to every request, so the backend can verify who's calling without a
-// separate hand-rolled JWT secret to manage.
 const axiosSecure = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
 });
 
-axiosSecure.interceptors.request.use(async (config) => {
-  const auth = getAuth(app);
-  const currentUser = auth.currentUser;
-  if (currentUser) {
-    const token = await currentUser.getIdToken();
+axiosSecure.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
+}, (error) => {
+  return Promise.reject(error);
 });
 
 const useAxiosSecure = () => axiosSecure;

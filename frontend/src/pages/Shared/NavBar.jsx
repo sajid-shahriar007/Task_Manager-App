@@ -78,10 +78,10 @@ const NavBar = () => {
             <div className="hidden md:flex items-center space-x-2">
               <div className="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center">
                 <span className="text-sm font-medium">
-                  {user?.displayName?.charAt(0) || user?.email?.charAt(0) || "U"}
+                  {user?.name?.charAt(0) || user?.email?.charAt(0) || "U"}
                 </span>
               </div>
-              <span className="text-sm">{user.displayName || "User"}</span>
+              <span className="text-sm">{user.name || "User"}</span>
             </div>
             <button 
               onClick={handleLogOut}

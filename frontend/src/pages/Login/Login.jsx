@@ -1,30 +1,24 @@
 import { useContext } from "react";
 
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../providers/AuthProvider";
 import Swal from 'sweetalert2'
-import SocialLogin from "../../components/SocialLogin/SocialLogin";
 
 const Login = () => {
 
-  const {signIn} = useContext(AuthContext)
+  const { signIn } = useContext(AuthContext)
   const navigate = useNavigate()
-  const location = useLocation()
 
-  // const from = location.state?.from?.pathname || "/"
-
-  const handleLogin = event => {
+  const handleLogin = async (event) => {
     event.preventDefault();
     const form = event.target;
     const email = form.email.value;
     const password = form.password.value;
-    // console.log(email , password);
-    signIn(email, password)
-    .then(result =>{
-      const user = result.user;
-      console.log(user);
+
+    try {
+      await signIn(email, password);
       Swal.fire({
-        title: "User Login successfull",
+        title: "User Login successful",
         showClass: {
           popup: `
             animate__animated
@@ -41,7 +35,14 @@ const Login = () => {
         }
       });
       navigate('/')
-    })
+    } catch (error) {
+      console.error(error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Login Failed',
+        text: error.response?.data?.error || 'Invalid email or password',
+      });
+    }
   }
   return (
     <>
@@ -77,14 +78,6 @@ const Login = () => {
           >
             Login
           </button>
-
-          <div className="mt-4 flex items-center justify-center gap-2">
-            <div className="w-full h-px bg-gray-300"></div>
-            <span className="text-sm text-gray-500">OR</span>
-            <div className="w-full h-px bg-gray-300"></div>
-          </div>
-
-          <SocialLogin></SocialLogin>
 
           <p className="mt-4 text-sm text-center text-gray-500">
             Don't have an account? <Link to='/signup' className="text-blue-500 hover:underline">Sign Up</Link>

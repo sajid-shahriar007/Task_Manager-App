@@ -4,6 +4,7 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import useAuth from "../../hooks/useAuth";
 import useAxiosSecure from "../../hooks/useAxiosSecure";
+import SearchBar from "../../components/SearchBar/SearchBar";
 
 const emptyTask = {
   title: "",
@@ -31,6 +32,7 @@ const TaskManager = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [filter, setFilter] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const fetchTasks = useCallback(async () => {
     if (!userEmail) return;
@@ -40,13 +42,15 @@ const TaskManager = () => {
       else if (filter === "pending") params.status = "pending";
       else if (["high", "medium", "low"].includes(filter)) params.priority = filter;
 
+      if (searchQuery) params.search = searchQuery;
+
       const { data } = await axiosSecure.get("/tasks", { params });
       setTasks(data);
     } catch (error) {
       console.error("Error fetching tasks:", error);
       toast.error("Failed to fetch tasks!");
     }
-  }, [userEmail, filter, axiosSecure]);
+  }, [userEmail, filter, searchQuery, axiosSecure]);
 
   const fetchCategories = useCallback(async () => {
     if (!userEmail) return;
@@ -218,7 +222,8 @@ const TaskManager = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
         <h1 className="text-3xl font-bold text-gray-800">✅ Task Manager</h1>
 
-        <div className="flex flex-wrap gap-2 items-center">
+        <div className="flex flex-wrap gap-2 items-center w-full lg:w-auto">
+          <SearchBar onSearch={setSearchQuery} />
           {/* Notifications bell */}
           <div className="relative">
             <button
