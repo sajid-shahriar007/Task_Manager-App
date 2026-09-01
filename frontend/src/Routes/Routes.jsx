@@ -1,7 +1,7 @@
-import { createBrowserRouter } from "react-router-dom";
-import Root from "../Layout/Root"; // fixed: folder is "Layout" (capital L), not "layout"
+import { createBrowserRouter, Navigate } from "react-router-dom";
+import Root from "../Layout/Root"; 
+import DashboardLayout from "../Layout/DashboardLayout";
 import Login from "../pages/Login/Login";
-import Home from "../pages/Home/Home";
 import SignUp from "../pages/SignUp/SignUp";
 import TaskManager from "../pages/TaskManager/TaskManager";
 import ErrorPage from "../pages/ErrorPage/ErrorPage";
@@ -14,11 +14,18 @@ export const router = createBrowserRouter([
     element: <Root></Root>,
     errorElement: <ErrorPage></ErrorPage>,
     children: [
-      { path: "/", element: <Home></Home> },
-      { path: "/taskmanager", element: <PrivateRoute><TaskManager></TaskManager></PrivateRoute> },
-      { path: "/about", element: <About></About> },
+      { path: "/", element: <Navigate to="/login" replace /> },
+      { path: "/about", element: <About /> },
       { path: "login", element: <Login/> },
       { path: "signup", element: <SignUp /> }
     ],
   },
+  {
+    path: "/taskmanager",
+    element: <PrivateRoute><DashboardLayout /></PrivateRoute>,
+    errorElement: <ErrorPage></ErrorPage>,
+    children: [
+      { path: "", element: <TaskManager /> }
+    ]
+  }
 ]);

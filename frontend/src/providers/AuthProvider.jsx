@@ -50,6 +50,22 @@ const AuthProvider = ({ children }) => {
         }
     };
 
+    const googleSignIn = async (token) => {
+        setLoading(true);
+        try {
+            const res = await axios.post(`${API_URL}/auth/google`, { token });
+            const { token: jwtToken, ...userData } = res.data;
+            localStorage.setItem("token", jwtToken);
+            localStorage.setItem("user", JSON.stringify(userData));
+            setUser(userData);
+            setLoading(false);
+            return res.data;
+        } catch (error) {
+            setLoading(false);
+            throw error;
+        }
+    };
+
     const logOut = () => {
         setLoading(true);
         localStorage.removeItem("token");
@@ -64,6 +80,7 @@ const AuthProvider = ({ children }) => {
         loading,
         createUser,
         signIn,
+        googleSignIn,
         logOut,
     };
 

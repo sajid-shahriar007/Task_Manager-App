@@ -61,3 +61,42 @@ export const loginUser = async (req, res) => {
     res.status(500).json({ error: 'Server error during login' });
   }
 };
+
+export const googleLogin = async (req, res) => {
+  try {
+    const { token } = req.body;
+    
+    const googleRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    
+    if (!googleRes.ok) {
+      return res.status(401).json({ error: 'Failed to authenticate with Google' });
+    }
+    
+    const { name, email } = await googleRes.json();
+    
+    let user = await User.findOne({ email });
+    
+    if (!user) {
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(Math.random().toString(36).slice(-8), salt);
+      
+      user = await User.create({
+        name,
+        email,
+        password: hashedPassword,
+      });
+    }
+
+    res.json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      token: generateToken(user._id, user.email),
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Server error during Google login' });
+  }
+};
