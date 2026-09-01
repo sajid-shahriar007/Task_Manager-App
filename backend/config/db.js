@@ -5,7 +5,7 @@ let db;
 
 const connectDB = async () => {
   try {
-    const client = new MongoClient(`mongodb+srv://cgSaviorAdmin:WnczohkZW0kCsuHW@cluster0.agjw6.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`);
+    const client = new MongoClient(process.env.MONGO_URI || 'mongodb://localhost:27017/tactiq');
     await client.connect();
     db = client.db('tactiq');
     console.log(' MongoDB Connected');

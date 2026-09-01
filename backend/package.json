@@ -7,6 +7,8 @@
   "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
+    "test": "node --test",
+    "test:watch": "node --test --watch",
     "lint": "eslint src"
   },
   "dependencies": {
@@ -20,9 +22,14 @@
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^7.8.7",
     "morgan": "^1.10.0",
+    "node-cron": "^4.6.0",
+    "swagger-jsdoc": "^6.3.0",
+    "swagger-ui-express": "^5.0.1",
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "nodemon": "^3.1.10"
+    "jest": "^30.5.1",
+    "nodemon": "^3.1.10",
+    "supertest": "^7.2.2"
   }
 }

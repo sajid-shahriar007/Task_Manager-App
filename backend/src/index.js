@@ -1,9 +1,11 @@
 import app from './app.js';
 import { connectDB } from './config/db.js';
 import { env } from './config/env.js';
+import { startNotificationWorker } from './workers/notificationWorker.js';
 
 async function main() {
   await connectDB();
+  startNotificationWorker();
   app.listen(env.port, () => {
     console.log(`API running on port ${env.port} [${env.nodeEnv}]`);
   });

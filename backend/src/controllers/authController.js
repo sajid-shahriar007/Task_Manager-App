@@ -1,9 +1,10 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { User } from '../models/User.js';
+import { env } from '../config/env.js';
 
 const generateToken = (id, email) => {
-  return jwt.sign({ id, email }, process.env.JWT_SECRET || 'fallback_secret', {
+  return jwt.sign({ id, email }, env.jwtSecret, {
     expiresIn: '30d',
   });
 };

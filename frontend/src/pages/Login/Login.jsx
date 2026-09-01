@@ -1,6 +1,6 @@
 import { useContext, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { AuthContext } from "../../providers/AuthProvider";
+import { AuthContext } from "../../providers/AuthContext";
 import { useGoogleLogin } from '@react-oauth/google';
 import Swal from 'sweetalert2';
 

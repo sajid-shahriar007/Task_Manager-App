@@ -1,6 +1,6 @@
 import { useContext } from 'react';
 import { Link } from 'react-router-dom';
-import { AuthContext } from '../../providers/AuthProvider';
+import { AuthContext } from '../../providers/AuthContext';
 
 const stats = [
   { value: '10K+', label: 'Tasks Completed' },

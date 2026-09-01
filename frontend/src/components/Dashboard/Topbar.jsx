@@ -2,8 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import useAxiosSecure from '../../hooks/useAxiosSecure';
+import { useOnlineStatus } from '../../hooks/useOnlineStatus';
 
 const Topbar = ({ onNewTask }) => {
+  const isOnline = useOnlineStatus();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const axiosSecure = useAxiosSecure();
@@ -50,6 +52,18 @@ const Topbar = ({ onNewTask }) => {
         </h1>
         <p className="text-sm text-gray-400 dark:text-gray-500 font-medium">Let's get things done!</p>
       </div>
+
+      {/* Connection status */}
+      <span
+        className={`flex items-center gap-1.5 text-[10px] font-semibold px-2.5 py-1 rounded-full border transition-colors ${isOnline
+            ? 'bg-green-50 dark:bg-green-500/10 text-green-600 dark:text-green-400 border-green-100 dark:border-green-500/20'
+            : 'bg-red-50 dark:bg-red-500/10 text-red-500 dark:text-red-400 border-red-100 dark:border-red-500/20'
+          }`}
+        title={isOnline ? 'Connected' : 'Offline — changes will sync when back online'}
+      >
+        <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-green-500' : 'bg-red-500'}`} />
+        {isOnline ? 'Online' : 'Offline'}
+      </span>
 
       {/* Search */}
       <form onSubmit={handleSearch} className="relative w-64">

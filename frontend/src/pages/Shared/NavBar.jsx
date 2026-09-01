@@ -1,6 +1,6 @@
 import { useContext } from "react";
 import { Link } from "react-router-dom";
-import { AuthContext } from "../../providers/AuthProvider";
+import { AuthContext } from "../../providers/AuthContext";
 import { FaTasks, FaSignOutAlt, FaUserPlus, FaSignInAlt } from "react-icons/fa";
 
 const NavBar = () => {

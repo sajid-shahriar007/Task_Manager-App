@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import useAuth from '../../hooks/useAuth';
 import { toast } from 'react-toastify';
 
-const navItems = [
+const getNavItems = (onOpenCategories) => [
   {
     name: 'Dashboard',
     path: '/taskmanager',
@@ -19,6 +19,16 @@ const navItems = [
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+      </svg>
+    ),
+  },
+  {
+    name: 'Categories',
+    path: '#',
+    action: onOpenCategories,
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a2 2 0 012-2z" />
       </svg>
     ),
   },
@@ -61,11 +71,11 @@ const navItems = [
   },
 ];
 
-const Sidebar = () => {
+const Sidebar = ({ onOpenCategories }) => {
   const { user, logOut } = useAuth();
   const navigate = useNavigate();
   const [darkMode, setDarkMode] = useState(
-    localStorage.getItem('theme') === 'dark' || 
+    localStorage.getItem('theme') === 'dark' ||
     document.documentElement.classList.contains('dark')
   );
 
@@ -138,21 +148,24 @@ const Sidebar = () => {
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-2 space-y-0.5 overflow-y-auto">
-        {navItems.map((item, idx) => (
+        {getNavItems(onOpenCategories).map((item, idx) => (
           <NavLink
             key={idx}
             to={item.path}
             onClick={(e) => {
               if (item.path === '#') {
                 e.preventDefault();
-                toast.info(`${item.name} is coming soon!`);
+                if (item.action) {
+                  item.action();
+                } else {
+                  toast.info(`${item.name} is coming soon!`);
+                }
               }
             }}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
-                isActive && item.path !== '#'
-                  ? 'bg-[#eef0ff] dark:bg-[#3d38ff]/20 text-[#3d38ff] dark:text-[#8b98f2]'
-                  : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#252525]'
+              `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${isActive && item.path !== '#'
+                ? 'bg-[#eef0ff] dark:bg-[#3d38ff]/20 text-[#3d38ff] dark:text-[#8b98f2]'
+                : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#252525]'
               }`
             }
           >

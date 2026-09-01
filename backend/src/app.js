@@ -7,6 +7,7 @@ import { env } from './config/env.js';
 import taskRoutes from './routes/task.routes.js';
 import categoryRoutes from './routes/category.routes.js';
 import authRoutes from './routes/authRoutes.js';
+import swaggerRoutes from './routes/swagger.routes.js';
 import { notFound, errorHandler } from './middleware/errorHandler.js';
 const app = express();
 app.use(helmet());
@@ -32,6 +33,7 @@ app.get('/health', (_req, res) => res.json({
 app.use('/api/tasks', taskRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/auth', authRoutes);
+app.use(swaggerRoutes); // serves /docs
 app.use(notFound);
 app.use(errorHandler);
 export default app;

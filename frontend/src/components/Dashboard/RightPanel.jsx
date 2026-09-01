@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
 const DAYS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
-const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 const MiniCalendar = () => {
   const today = new Date();
@@ -53,12 +53,11 @@ const MiniCalendar = () => {
       {/* Date cells */}
       <div className="grid grid-cols-7 gap-y-0.5">
         {cells.map((d, i) => (
-          <div key={i} className={`text-center text-xs py-1 rounded-lg font-medium transition-colors ${
-            d === null ? '' :
-            isToday(d)
-              ? 'bg-[#3d38ff] text-white font-bold'
-              : 'text-gray-600 dark:text-gray-400 hover:bg-[#eef0ff] dark:hover:bg-[#3d38ff]/20 hover:text-[#3d38ff] dark:hover:text-[#8b98f2] cursor-pointer'
-          }`}>
+          <div key={i} className={`text-center text-xs py-1 rounded-lg font-medium transition-colors ${d === null ? '' :
+              isToday(d)
+                ? 'bg-[#3d38ff] text-white font-bold'
+                : 'text-gray-600 dark:text-gray-400 hover:bg-[#eef0ff] dark:hover:bg-[#3d38ff]/20 hover:text-[#3d38ff] dark:hover:text-[#8b98f2] cursor-pointer'
+            }`}>
             {d || ''}
           </div>
         ))}
@@ -72,6 +71,12 @@ const RightPanel = ({ tasks = [] }) => {
   const completed = tasks.filter((t) => t.completed).length;
   const total = tasks.length || 1;
   const completedPercent = Math.round((completed / total) * 100);
+
+  // Tasks with a due date that is today or in the future (upcoming)
+  const upcoming = tasks
+    .filter((t) => !t.completed && t.dueDate && new Date(t.dueDate) >= new Date())
+    .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
+    .slice(0, 4);
 
   const priorityDot = (p) => {
     if (p === 'high') return 'bg-red-400';
@@ -103,6 +108,24 @@ const RightPanel = ({ tasks = [] }) => {
           </div>
         )}
       </div>
+
+      {/* Upcoming Due */}
+      {upcoming.length > 0 && (
+        <div className="bg-white dark:bg-[#1a1a1a] rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4 transition-colors">
+          <p className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Upcoming Due</p>
+          <div className="space-y-2.5">
+            {upcoming.map((t) => (
+              <div key={t._id} className="flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full flex-shrink-0 ${priorityDot(t.priority)}`} />
+                <p className="text-xs text-gray-700 dark:text-gray-300 truncate flex-1">{t.title}</p>
+                <span className="text-[10px] font-medium text-[#3d38ff] dark:text-[#8b98f2] flex-shrink-0">
+                  {new Date(t.dueDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Progress */}
       <div className="bg-white dark:bg-[#1a1a1a] rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-4 transition-colors">

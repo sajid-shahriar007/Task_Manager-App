@@ -1,11 +1,21 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import React, { useState, useEffect, useMemo } from "react";
+import { useSearchParams, useOutletContext } from "react-router-dom";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import useAuth from "../../hooks/useAuth";
-import useAxiosSecure from "../../hooks/useAxiosSecure";
 import Topbar from "../../components/Dashboard/Topbar";
 import RightPanel from "../../components/Dashboard/RightPanel";
+import CategoryModal from "../../components/Categories/CategoryModal";
+import KanbanBoard from "../../components/KanbanBoard/KanbanBoard";
+import CommandPalette from "../../components/CommandPalette/CommandPalette";
+import {
+  useTasksQuery,
+  useCreateTask,
+  useUpdateTask,
+  useDeleteTask,
+  useToggleTask,
+} from "../../hooks/useTasksQuery";
+import { useCategoriesQuery } from "../../hooks/useCategoriesQuery";
 
 const emptyTask = {
   title: "",
@@ -24,48 +34,50 @@ const PRIORITY_STYLES = {
 
 const TaskManager = () => {
   const { user } = useAuth();
-  const axiosSecure = useAxiosSecure();
   const userEmail = user?.email;
   const [searchParams] = useSearchParams();
+  const { showCategoriesModal, setShowCategoriesModal } = useOutletContext() || {};
 
-  const [tasks, setTasks] = useState([]);
-  const [categories, setCategories] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [currentTask, setCurrentTask] = useState(emptyTask);
   const [isEditing, setIsEditing] = useState(false);
   const [filter, setFilter] = useState("all");
   const [sortBy, setSortBy] = useState("newest");
+  const [view, setView] = useState("list");
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [page, setPage] = useState(1);
   const searchQuery = searchParams.get("search") || "";
 
-  const fetchTasks = useCallback(async () => {
-    if (!userEmail) return;
-    try {
-      const params = {};
-      if (filter === "completed") params.status = "completed";
-      else if (filter === "pending") params.status = "pending";
-      else if (["high", "medium", "low"].includes(filter)) params.priority = filter;
-      if (searchQuery) params.search = searchQuery;
-      const { data } = await axiosSecure.get("/tasks", { params });
-      setTasks(data);
-    } catch (err) {
-      console.error("Error fetching tasks:", err);
-    }
-  }, [userEmail, filter, searchQuery, axiosSecure]);
+  const params = useMemo(() => {
+    const p = {};
+    if (filter === "completed") p.status = "completed";
+    else if (filter === "pending") p.status = "pending";
+    else if (["high", "medium", "low"].includes(filter)) p.priority = filter;
+    if (searchQuery) p.search = searchQuery;
+    if (page > 1) p.page = page;
+    return p;
+  }, [filter, searchQuery, page]);
 
-  const fetchCategories = useCallback(async () => {
-    if (!userEmail) return;
-    try {
-      const { data } = await axiosSecure.get("/categories");
-      setCategories(data);
-    } catch (err) {
-      console.error("Error fetching categories:", err);
-    }
-  }, [userEmail, axiosSecure]);
+  const { data } = useTasksQuery(params);
+  const tasks = data?.tasks ?? [];
+  const pagination = data?.pagination ?? null;
+  const { data: categories = [] } = useCategoriesQuery();
+  const createTask = useCreateTask();
+  const updateTask = useUpdateTask();
+  const deleteTask = useDeleteTask();
+  const toggleTask = useToggleTask();
 
+  // Ctrl/Cmd + K opens command palette
   useEffect(() => {
-    fetchTasks();
-    fetchCategories();
-  }, [fetchTasks, fetchCategories]);
+    const handler = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   const sortedTasks = [...tasks].sort((a, b) => {
     if (sortBy === "newest") return new Date(b.createdAt) - new Date(a.createdAt);
@@ -100,12 +112,10 @@ const TaskManager = () => {
     };
     try {
       if (isEditing) {
-        const { data } = await axiosSecure.put(`/tasks/${currentTask._id}`, payload);
-        setTasks((prev) => prev.map((t) => (t._id === data._id ? data : t)));
+        await updateTask.mutateAsync({ id: currentTask._id, ...payload });
         toast.success("Task updated!");
       } else {
-        const { data } = await axiosSecure.post("/tasks", payload);
-        setTasks((prev) => [data, ...prev]);
+        await createTask.mutateAsync(payload);
         toast.success("Task added!");
       }
       setShowModal(false);
@@ -117,8 +127,7 @@ const TaskManager = () => {
 
   const handleToggleCompletion = async (id) => {
     try {
-      const { data } = await axiosSecure.patch(`/tasks/${id}/toggle`);
-      setTasks((prev) => prev.map((t) => (t._id === id ? data : t)));
+      await toggleTask.mutateAsync(id);
     } catch (err) {
       console.error("Error toggling task:", err);
     }
@@ -126,11 +135,19 @@ const TaskManager = () => {
 
   const handleDelete = async (id) => {
     try {
-      await axiosSecure.delete(`/tasks/${id}`);
-      setTasks((prev) => prev.filter((t) => t._id !== id));
+      await deleteTask.mutateAsync(id);
       toast.success("Task deleted!");
     } catch (err) {
-      toast.error("Failed to delete task!");
+      toast.error(err.response?.data?.error || "Failed to delete task!");
+    }
+  };
+
+  const handleStatusChange = async (id, status) => {
+    try {
+      await updateTask.mutateAsync({ id, status, completed: status === "completed" });
+      toast.success("Task moved!");
+    } catch (err) {
+      toast.error(err.response?.data?.error || "Failed to update task!");
     }
   };
 
@@ -270,11 +287,10 @@ const TaskManager = () => {
           </span>
           <button
             onClick={() => handleToggleCompletion(task._id)}
-            className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-lg transition ${
-              isCompleted
-                ? "bg-green-100 dark:bg-green-500/20 text-green-600 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-500/30"
-                : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-[#eef0ff] dark:hover:bg-[#3d38ff]/20 hover:text-[#3d38ff] dark:hover:text-[#8b98f2]"
-            }`}
+            className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-lg transition ${isCompleted
+              ? "bg-green-100 dark:bg-green-500/20 text-green-600 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-500/30"
+              : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-[#eef0ff] dark:hover:bg-[#3d38ff]/20 hover:text-[#3d38ff] dark:hover:text-[#8b98f2]"
+              }`}
           >
             {isCompleted ? (
               <>
@@ -310,16 +326,30 @@ const TaskManager = () => {
               <button
                 key={f}
                 onClick={() => setFilter(f)}
-                className={`text-xs font-semibold px-3 py-1.5 rounded-full capitalize transition-all ${
-                  filter === f
-                    ? "bg-[#3d38ff] text-white shadow"
-                    : "bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-[#8b98f2] dark:hover:border-[#5a56ff] hover:text-[#3d38ff] dark:hover:text-[#8b98f2]"
-                }`}
+                className={`text-xs font-semibold px-3 py-1.5 rounded-full capitalize transition-all ${filter === f
+                  ? "bg-[#3d38ff] text-white shadow"
+                  : "bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-[#8b98f2] dark:hover:border-[#5a56ff] hover:text-[#3d38ff] dark:hover:text-[#8b98f2]"
+                  }`}
               >
                 {f === "all" ? "All Tasks" : f === "high" ? "🔴 High" : f === "medium" ? "🟡 Medium" : f === "low" ? "🟢 Low" : f.charAt(0).toUpperCase() + f.slice(1)}
               </button>
             ))}
-            <div className="ml-auto">
+            <div className="ml-auto flex items-center gap-3">
+              {/* View toggle */}
+              <div className="flex items-center bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-700 rounded-xl p-1">
+                <button
+                  onClick={() => setView("list")}
+                  className={`text-xs font-semibold px-3 py-1 rounded-lg transition-all ${view === "list" ? "bg-[#3d38ff] text-white shadow" : "text-gray-500 dark:text-gray-400 hover:text-[#3d38ff]"}`}
+                >
+                  List
+                </button>
+                <button
+                  onClick={() => setView("board")}
+                  className={`text-xs font-semibold px-3 py-1 rounded-lg transition-all ${view === "board" ? "bg-[#3d38ff] text-white shadow" : "text-gray-500 dark:text-gray-400 hover:text-[#3d38ff]"}`}
+                >
+                  Board
+                </button>
+              </div>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
@@ -336,6 +366,13 @@ const TaskManager = () => {
                 🔍 "{searchQuery}"
               </span>
             )}
+            <button
+              onClick={() => setPaletteOpen(true)}
+              className="text-xs font-semibold px-3 py-1.5 rounded-full bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-[#8b98f2] hover:text-[#3d38ff] transition-all"
+              title="Command palette (Ctrl+K)"
+            >
+              ⌘K
+            </button>
           </div>
 
           {/* Stat Cards */}
@@ -354,41 +391,88 @@ const TaskManager = () => {
             ))}
           </div>
 
-          {/* Ongoing Tasks */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-gray-800 dark:text-gray-200">Ongoing Tasks</h2>
-              <span className="text-xs text-gray-400 dark:text-gray-500 font-medium">{pendingTasks.length} tasks</span>
-            </div>
-            {pendingTasks.length === 0 ? (
-              <div className="bg-white dark:bg-[#1a1a1a] rounded-2xl border border-dashed border-gray-200 dark:border-gray-700 p-10 text-center text-gray-400 dark:text-gray-500 transition-colors">
-                <p className="text-4xl mb-2">🎉</p>
-                <p className="font-medium">No pending tasks! You're all caught up.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {pendingTasks.map((task) => (
-                  <TaskCard key={task._id} task={task} isCompleted={false} />
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Completed Tasks */}
-          {completedTasks.length > 0 && (
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-gray-800 dark:text-gray-200">Completed Tasks</h2>
-                <span className="text-xs text-gray-400 dark:text-gray-500 font-medium">{completedTasks.length} tasks</span>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {completedTasks.map((task) => (
-                  <TaskCard key={task._id} task={task} isCompleted={true} />
-                ))}
-              </div>
+          {/* Board View */}
+          {view === "board" && (
+            <div className="h-[calc(100vh-280px)] min-h-[400px]">
+              <KanbanBoard
+                tasks={sortedTasks}
+                categories={categories}
+                onToggle={handleToggleCompletion}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                onStatusChange={handleStatusChange}
+              />
             </div>
           )}
 
+          {/* List View */}
+          {view === "list" && (
+            <>
+              {/* Ongoing Tasks */}
+              <div className="mb-8">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-bold text-gray-800 dark:text-gray-200">Ongoing Tasks</h2>
+                  <span className="text-xs text-gray-400 dark:text-gray-500 font-medium">{pendingTasks.length} tasks</span>
+                </div>
+                {pendingTasks.length === 0 ? (
+                  <div className="bg-white dark:bg-[#1a1a1a] rounded-2xl border border-dashed border-gray-200 dark:border-gray-700 p-10 text-center text-gray-400 dark:text-gray-500 transition-colors">
+                    <p className="text-4xl mb-2">🎉</p>
+                    <p className="font-medium">No pending tasks! You're all caught up.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {pendingTasks.map((task) => (
+                      <TaskCard key={task._id} task={task} isCompleted={false} />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Completed Tasks */}
+              {completedTasks.length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-bold text-gray-800 dark:text-gray-200">Completed Tasks</h2>
+                    <span className="text-xs text-gray-400 dark:text-gray-500 font-medium">{completedTasks.length} tasks</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {completedTasks.map((task) => (
+                      <TaskCard key={task._id} task={task} isCompleted={true} />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Pagination */}
+          {pagination && pagination.totalPages > 1 && (
+            <div className="mt-8 flex items-center justify-center gap-2">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="w-9 h-9 flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-[#8b98f2] hover:text-[#3d38ff] disabled:opacity-40 disabled:pointer-events-none transition"
+                aria-label="Previous page"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <span className="text-sm text-gray-600 dark:text-gray-400 font-medium px-3">
+                Page {page} of {pagination.totalPages}
+              </span>
+              <button
+                onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
+                disabled={page >= pagination.totalPages}
+                className="w-9 h-9 flex items-center justify-center rounded-xl border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-[#8b98f2] hover:text-[#3d38ff] disabled:opacity-40 disabled:pointer-events-none transition"
+                aria-label="Next page"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Right Panel */}
@@ -396,6 +480,24 @@ const TaskManager = () => {
           <RightPanel tasks={tasks} />
         </div>
       </div>
+
+      {/* Command Palette */}
+      <CommandPalette
+        isOpen={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        tasks={tasks}
+        categories={categories}
+        onNewTask={() => { resetForm(); setShowModal(true); }}
+        onFilter={(f) => setFilter(f)}
+      />
+
+      {/* Categories Modal */}
+      <CategoryModal
+        isOpen={!!showCategoriesModal}
+        onClose={() => setShowCategoriesModal?.(false)}
+        tasks={tasks}
+        onCategoriesChanged={() => { }}
+      />
 
       {/* Add/Edit Modal */}
       {showModal && (

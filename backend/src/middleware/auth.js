@@ -1,29 +1,25 @@
 import jwt from 'jsonwebtoken';
 import { User } from '../models/User.js';
+import { env } from '../config/env.js';
 
-export const verifyFirebaseToken = async (req, res, next) => {
-  let token;
+// Verifies the signed bearer token the frontend sends after login/Google-OAuth.
+// The token was issued server-side using the validated JWT_SECRET (see src/config/env.js).
+export const verifyToken = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
 
-  if (
-    req.headers.authorization &&
-    req.headers.authorization.startsWith('Bearer')
-  ) {
-    try {
-      token = req.headers.authorization.split(' ')[1];
-      
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret');
-
-      req.user = await User.findById(decoded.id).select('-password');
-      req.userEmail = decoded.email;
-      
-      next();
-    } catch (error) {
-      console.error(error);
-      res.status(401).json({ error: 'Not authorized, token failed' });
-    }
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Not authorized, no token' });
   }
 
-  if (!token) {
-    res.status(401).json({ error: 'Not authorized, no token' });
+  const token = authHeader.split(' ')[1];
+
+  try {
+    const decoded = jwt.verify(token, env.jwtSecret);
+    req.user = await User.findById(decoded.id).select('-password');
+    req.userEmail = decoded.email;
+    next();
+  } catch (error) {
+    console.error(error);
+    return res.status(401).json({ error: 'Not authorized, token failed' });
   }
 };

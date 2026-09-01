@@ -2,10 +2,15 @@ import { Task } from '../models/Task.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { createTaskSchema, updateTaskSchema } from '../schemas/task.schema.js';
 
-// GET /api/tasks?status=&priority=&category=&search=
+// GET /api/tasks?status=&priority=&category=&search=&page=&limit=
 export async function getTasks(req, res) {
   const userEmail = req.user.email;
   const { status, priority, category, search } = req.query;
+
+  // Pagination defaults: page 1, 100 tasks per page
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const limit = Math.min(500, Math.max(1, parseInt(req.query.limit, 10) || 100));
+  const skip = (page - 1) * limit;
 
   const filter = { userEmail };
   if (status) filter.status = status;
@@ -13,8 +18,20 @@ export async function getTasks(req, res) {
   if (category) filter.category = category;
   if (search) filter.title = { $regex: search, $options: 'i' };
 
-  const tasks = await Task.find(filter).populate('category').sort({ createdAt: -1 });
-  res.json(tasks);
+  const [tasks, total] = await Promise.all([
+    Task.find(filter).populate('category').sort({ createdAt: -1 }).skip(skip).limit(limit),
+    Task.countDocuments(filter),
+  ]);
+
+  res.json({
+    tasks,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  });
 }
 
 // GET /api/tasks/notifications — tasks that are overdue or due within 24h

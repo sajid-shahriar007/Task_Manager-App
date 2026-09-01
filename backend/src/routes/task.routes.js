@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { asyncHandler } from '../utils/asyncHandler.js';
-import { verifyFirebaseToken } from '../middleware/auth.js';
+import { verifyToken } from '../middleware/auth.js';
 import {
   getTasks,
   getTaskNotifications,
@@ -12,7 +12,7 @@ import {
 
 const router = Router();
 
-router.use(verifyFirebaseToken); // every route below requires a valid Firebase ID token
+router.use(verifyToken); // every route below requires a valid bearer token
 
 router.get('/', asyncHandler(getTasks));
 router.get('/notifications', asyncHandler(getTaskNotifications));
